@@ -17,6 +17,7 @@ dependencies {
   implementation("io.ktor:ktor-server-core:$ktorVersion")
   implementation("io.ktor:ktor-server-netty:$ktorVersion")
   implementation("io.ktor:ktor-html-builder:$ktorVersion")
+  implementation("org.jetbrains:kotlin-css-jvm:1.0.0-pre.109-kotlin-1.3.72")
   implementation("ch.qos.logback:logback-classic:1.2.3")
 }
 
