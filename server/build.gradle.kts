@@ -16,6 +16,7 @@ dependencies {
   val ktorVersion = "1.3.2"
   implementation("io.ktor:ktor-server-core:$ktorVersion")
   implementation("io.ktor:ktor-server-netty:$ktorVersion")
+  implementation("io.ktor:ktor-html-builder:$ktorVersion")
   implementation("ch.qos.logback:logback-classic:1.2.3")
 }
 
