@@ -22,6 +22,7 @@ class FitbitApi(
     return try {
       Result.Success(client.get(urlString) {
         headers.append("Authorization", "Bearer $accessToken")
+        headers.append("Accept-Language", "en_US")
       })
     } catch (responseException: ResponseException) {
       Result.Error(responseException)
