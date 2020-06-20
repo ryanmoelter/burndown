@@ -21,6 +21,8 @@ dependencies {
   implementation("io.ktor:ktor-auth:$ktorVersion")
   implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
   implementation("io.ktor:ktor-locations:$ktorVersion")
+  implementation("io.ktor:ktor-network-tls:$ktorVersion")
+  implementation("io.ktor:ktor-network-tls-certificates:$ktorVersion")
 
   implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
   implementation("io.ktor:ktor-client-logging-jvm:$ktorVersion")
@@ -33,6 +35,14 @@ dependencies {
   implementation("com.sksamuel.hoplite:hoplite-core:$hopliteVersion")
   implementation("com.sksamuel.hoplite:hoplite-yaml:$hopliteVersion")
 }
+
+task("generateJks", JavaExec::class) {
+  dependsOn("classes")
+  classpath = sourceSets.main.get().runtimeClasspath
+  main = "co.moelten.burndown.server.CertificateGeneratorKt"
+}
+
+getTasksByName("run", false).first().dependsOn("generateJks")
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
   kotlinOptions {

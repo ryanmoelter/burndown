@@ -9,4 +9,4 @@
 /captures
 .externalNativeBuild
 app/gradle.properties
-config.yaml
+**/config.yaml
