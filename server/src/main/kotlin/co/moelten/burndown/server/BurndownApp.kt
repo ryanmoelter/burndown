@@ -87,8 +87,25 @@ fun Application.module() {
           standardHeader()
           body {
             h1("title") { +"Burndown" }
-            weights.forEach { weightMeasurement ->
-              p { +"${weightMeasurement.date} ${weightMeasurement.weight} lbs" }
+            table {
+              thead {
+                tr {
+                  th { +"Date" }
+                  th { +"Fat weight (lbs)" }
+                  th { +"Fat %" }
+                  th { +"Overall weight (lbs)" }
+                }
+              }
+              tbody {
+                weights.forEach { weightMeasurement ->
+                  tr {
+                    td { +weightMeasurement.date.toString() }
+                    td { +String.format("%.2f", weightMeasurement.fat / 100 * weightMeasurement.weight) }
+                    td { +"${String.format("%.2f", weightMeasurement.fat)}%" }
+                    td { +String.format("%.1f", weightMeasurement.weight) }
+                  }
+                }
+              }
             }
             br {  }
             p {
