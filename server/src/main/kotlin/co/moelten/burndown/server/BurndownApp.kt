@@ -22,6 +22,7 @@ import io.ktor.features.origin
 import io.ktor.html.respondHtml
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
 import io.ktor.request.host
 import io.ktor.request.port
 import io.ktor.response.respondRedirect
@@ -34,11 +35,11 @@ import io.ktor.server.netty.Netty
 import io.ktor.sessions.*
 import io.ktor.util.KtorExperimentalAPI
 import io.ktor.util.hex
-import kotlinx.css.*
-import kotlinx.html.*
+import kotlinx.css.CSSBuilder
+import kotlinx.css.body
+import kotlinx.css.html
 import java.io.File
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 fun main() {
   embeddedServer(
@@ -65,7 +66,7 @@ fun Application.module() {
   install(DefaultHeaders)
   install(CallLogging)
   install(Sessions) {
-    cookie<MySession>("oauthSession") {
+    cookie<FitbitSessionData>("oauthSession") {
       @OptIn(KtorExperimentalAPI::class)
       val secretSignKey = hex("c249a0d443e74742d1e3f0ff85f2d285")
       transform(SessionTransportTransformerMessageAuthentication(secretSignKey))
@@ -80,57 +81,19 @@ fun Application.module() {
   }
   routing {
     get("/") {
-      val session = call.sessions.get<MySession>()
-      if (session != null) {
-        val fitbitApi = standardHttpClient().authorizeToFitbit(session.accessToken)
-        val weights = fitbitApi.getWeightForTheLastMonth(LocalDate.now()).weight
-        call.respondHtml {
-          standardHeader()
-          body {
-            header {
-              div {
-                h1("title content") { +"Burndown" }
-              }
-            }
-            div("content") {
-              table {
-                thead {
-                  tr {
-                    th(ThScope.col) { +"Date" }
-                    th(ThScope.col, "number") { +"Fat weight (lbs)" }
-                    th(ThScope.col, "number") { +"Fat %" }
-                    th(ThScope.col, "number") { +"Overall weight (lbs)" }
-                  }
-                }
-                tbody {
-                  weights.forEach { weightMeasurement ->
-                    tr {
-                      td { +weightMeasurement.date.format(DateTimeFormatter.ofPattern("MMM d")) }
-                      td("number") { +String.format("%.2f", weightMeasurement.fat / 100 * weightMeasurement.weight) }
-                      td("number") { +"${String.format("%.2f", weightMeasurement.fat)}%" }
-                      td("number") { +String.format("%.1f", weightMeasurement.weight) }
-                    }
-                  }
-                }
-              }
-              br {  }
-              p {
-                a(href = "/login") { +"Refresh login with Fitbit" }
-              }
-            }
+      val sessionData = call.sessions.get<FitbitSessionData>()
+      if (sessionData != null) {
+        val fitbitApi = standardHttpClient().authorizeToFitbit(sessionData)
+        when (val weightResult = fitbitApi.getWeightForTheLastMonth(LocalDate.now())) {
+          is Result.Error -> if (weightResult.error.response.status == HttpStatusCode.Unauthorized) {
+            call.respondRedirect("/login")
+          } else {
+            throw weightResult.error
           }
+          is Result.Success -> call.respondHtml { authenticatedIndex(weightResult.value.weight) }
         }
       } else {
-        call.respondHtml {
-          standardHeader()
-          body {
-            h1("title") { +"Burndown" }
-            p { +"Hi ${session?.userId}" }
-            p {
-              a(href = "/login") { +"Login with Fitbit" }
-            }
-          }
-        }
+        call.respondHtml { unauthenticatedIndex() }
       }
     }
 
@@ -140,7 +103,13 @@ fun Application.module() {
           val principal = call.authentication.principal<OAuthAccessTokenResponse.OAuth2>()
             ?: error("No principal")
 
-          call.sessions.set(MySession(principal.extraParameters["user_id"]!!, principal.accessToken, principal.refreshToken!!))
+          call.sessions.set(
+            FitbitSessionData(
+              principal.extraParameters["user_id"]!!,
+              principal.accessToken,
+              principal.refreshToken!!
+            )
+          )
           call.respondRedirect("/")
         }
       }
@@ -152,71 +121,7 @@ fun Application.module() {
   }
 }
 
-private fun CSSBuilder.standardCss(html: TagSelector, body: TagSelector) {
-  val accentColor = Color("rgb(160, 0, 115)")
-
-  html {
-    fontFamily = "proxima-nova, sans-serif"
-    fontWeight = FontWeight.w400
-    fontStyle = FontStyle.normal
-  }
-
-  body {
-    margin(0.px)
-  }
-
-  header {
-    backgroundColor = accentColor
-    color = Color("#FFFFFF")
-    overflow = Overflow.auto
-    marginBottom = 16.px
-  }
-
-  rule(".content") {
-    maxWidth = 800.px
-    paddingLeft = 24.px
-    paddingRight = 24.px
-    marginRight = LinearDimension.auto
-    marginLeft = LinearDimension.auto
-  }
-
-  rule(".title") {
-    fontFamily = "lust-script, serif"
-  }
-
-  table {
-    borderSpacing = 0.px
-    width = 100.pct
-  }
-
-  thead {
-    backgroundColor = accentColor.withAlpha(0.1)
-  }
-
-  th {
-    paddingTop = 16.px
-    paddingBottom = 16.px
-    paddingLeft = 8.px
-    paddingRight = 8.px
-  }
-
-  td {
-    paddingTop = 16.px
-    paddingBottom = 16.px
-    paddingLeft = 8.px
-    paddingRight = 8.px
-  }
-
-  rule(".number") {
-    textAlign = TextAlign.right
-  }
-
-  rule("tr:nth-child(even)") {
-    backgroundColor = accentColor.withAlpha(0.1)
-  }
-}
-
-data class MySession(
+data class FitbitSessionData(
   val userId: String,
   val accessToken: String,
   val refreshToken: String
@@ -238,14 +143,6 @@ private fun ApplicationCall.redirectUrl(path: String): String {
   val hostPort = request.host() + request.port().let { port -> if (port == defaultPort) "" else ":$port" }
   val protocol = request.origin.scheme
   return "$protocol://$hostPort$path"
-}
-
-private fun HTML.standardHeader() {
-  head {
-    title { +"Burndown" }
-    link(rel = "stylesheet", href = "/styles.css", type = "text/css")
-    link(rel = "stylesheet", href = "https://use.typekit.net/jie0wdu.css")
-  }
 }
 
 suspend inline fun ApplicationCall.respondCss(builder: CSSBuilder.() -> Unit) {
