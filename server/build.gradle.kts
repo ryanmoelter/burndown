@@ -42,5 +42,5 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 }
 
 application {
-  mainClassName = "BurndownAppKt"
+  mainClassName = "io.ktor.server.netty.EngineMain"
 }

@@ -44,8 +44,6 @@ import java.time.LocalDate
 fun main() {
   embeddedServer(
     factory = Netty,
-    port = 8080,
-    watchPaths = listOf("server"),
     module = Application::module
   ).start()
 }
