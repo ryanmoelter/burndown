@@ -1,6 +1,7 @@
 plugins {
   application
   kotlin("jvm")
+  kotlin("plugin.serialization") version "1.3.72"
 }
 
 group = "co.moelten.burndown"
@@ -20,8 +21,12 @@ dependencies {
   implementation("io.ktor:ktor-auth:$ktorVersion")
   implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
   implementation("io.ktor:ktor-locations:$ktorVersion")
+
   implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
   implementation("io.ktor:ktor-client-logging-jvm:$ktorVersion")
+  implementation("io.ktor:ktor-client-serialization-jvm:$ktorVersion")
+  implementation("io.ktor:ktor-client-json-jvm:$ktorVersion")
+
   implementation("org.jetbrains:kotlin-css-jvm:1.0.0-pre.109-kotlin-1.3.72")
   implementation("ch.qos.logback:logback-classic:1.2.3")
   val hopliteVersion = "1.2.3"

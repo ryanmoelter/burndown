@@ -12,6 +12,8 @@ import io.ktor.auth.authentication
 import io.ktor.auth.oauth
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.features.json.JsonFeature
+import io.ktor.client.features.json.serializer.KotlinxSerializer
 import io.ktor.client.features.logging.LogLevel
 import io.ktor.client.features.logging.Logging
 import io.ktor.features.CallLogging
@@ -35,6 +37,7 @@ import io.ktor.util.hex
 import kotlinx.css.*
 import kotlinx.html.*
 import java.io.File
+import java.time.LocalDate
 
 fun main() {
   embeddedServer(
@@ -45,15 +48,8 @@ fun main() {
   ).start()
 }
 
-data class MySession(
-  val userId: String,
-  val accessToken: String,
-  val refreshToken: String
-)
-
 fun Application.module() {
   val config = ConfigLoader().loadConfigOrThrow<Config>(File("./config.yaml"))
-
   val fitbitLoginProvider = OAuth2ServerSettings(
     "fitbit",
     "https://www.fitbit.com/oauth2/authorize",
@@ -76,11 +72,7 @@ fun Application.module() {
   }
   authentication {
     oauth("fitbit-oauth") {
-      client = HttpClient(OkHttp) {
-        install(Logging) {
-          level = LogLevel.ALL
-        }
-      }
+      client = standardHttpClient()
       providerLookup = { fitbitLoginProvider }
       urlProvider = { redirectUrl("/login") }
     }
@@ -88,13 +80,31 @@ fun Application.module() {
   routing {
     get("/") {
       val session = call.sessions.get<MySession>()
-      call.respondHtml {
-        standardHeader()
-        body {
-          h1("title") { +"Burndown" }
-          p { +"Hi ${session?.userId}"}
-          p {
-            a(href = "/login") { +"Login with Fitbit" }
+      if (session != null) {
+        val fitbitApi = standardHttpClient().authorizeToFitbit(session.accessToken)
+        val weights = fitbitApi.getWeightForTheLastMonth(LocalDate.now()).weight
+        call.respondHtml {
+          standardHeader()
+          body {
+            h1("title") { +"Burndown" }
+            weights.forEach { weightMeasurement ->
+              p { +"${weightMeasurement.date} ${weightMeasurement.weight} lbs" }
+            }
+            br {  }
+            p {
+              a(href = "/login") { +"Refresh login with Fitbit" }
+            }
+          }
+        }
+      } else {
+        call.respondHtml {
+          standardHeader()
+          body {
+            h1("title") { +"Burndown" }
+            p { +"Hi ${session?.userId}" }
+            p {
+              a(href = "/login") { +"Login with Fitbit" }
+            }
           }
         }
       }
@@ -113,26 +123,45 @@ fun Application.module() {
     }
 
     get("/styles.css") {
-      call.respondCss {
-        html {
-          fontFamily = "proxima-nova, sans-serif"
-          fontWeight = FontWeight.w400
-          fontStyle = FontStyle.normal
-        }
+      call.respondCss { standardCss(html, body) }
+    }
+  }
+}
 
-        body {
-          maxWidth = 800.px
-          paddingLeft = 24.px
-          paddingRight = 24.px
-          paddingBottom = 24.px
-          marginRight = LinearDimension.auto
-          marginLeft = LinearDimension.auto
-        }
+private fun CSSBuilder.standardCss(html: TagSelector, body: TagSelector) {
+  html {
+    fontFamily = "proxima-nova, sans-serif"
+    fontWeight = FontWeight.w400
+    fontStyle = FontStyle.normal
+  }
 
-        rule(".title") {
-          fontFamily = "lust-script, serif"
-        }
-      }
+  body {
+    maxWidth = 800.px
+    paddingLeft = 24.px
+    paddingRight = 24.px
+    paddingBottom = 24.px
+    marginRight = LinearDimension.auto
+    marginLeft = LinearDimension.auto
+  }
+
+  rule(".title") {
+    fontFamily = "lust-script, serif"
+  }
+}
+
+data class MySession(
+  val userId: String,
+  val accessToken: String,
+  val refreshToken: String
+)
+
+private fun standardHttpClient(): HttpClient {
+  return HttpClient(OkHttp) {
+    install(JsonFeature) {
+      serializer = KotlinxSerializer()
+    }
+    install(Logging) {
+      level = LogLevel.ALL
     }
   }
 }
