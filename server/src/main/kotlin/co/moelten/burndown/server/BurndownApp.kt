@@ -122,6 +122,9 @@ fun Application.module() {
 
         body {
           maxWidth = 800.px
+          paddingLeft = 24.px
+          paddingRight = 24.px
+          paddingBottom = 24.px
           marginRight = LinearDimension.auto
           marginLeft = LinearDimension.auto
         }
