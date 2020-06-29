@@ -2,6 +2,7 @@ plugins {
   application
   kotlin("jvm")
   kotlin("plugin.serialization") version "1.3.72"
+  id("com.github.johnrengelman.shadow") version "6.0.0"
 }
 
 group = "co.moelten.burndown"
@@ -53,4 +54,14 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 
 application {
   mainClassName = "io.ktor.server.netty.EngineMain"
+}
+
+tasks.withType<Jar> {
+  manifest {
+    attributes(
+      mapOf(
+        "Main-Class" to application.mainClassName
+      )
+    )
+  }
 }
