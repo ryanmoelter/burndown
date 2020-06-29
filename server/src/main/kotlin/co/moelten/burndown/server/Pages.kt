@@ -7,9 +7,15 @@ import java.time.format.DateTimeFormatter
 internal fun HTML.unauthenticatedIndex() {
   standardHeader()
   body {
-    h1("title") { +"Burndown" }
-    p {
-      a(href = "/login") { +"Login with Fitbit" }
+    header {
+      div {
+        h1("title content") { +"Burndown" }
+      }
+    }
+    div("content") {
+      p {
+        a(href = "/login") { +"Login with Fitbit" }
+      }
     }
   }
 }
@@ -118,5 +124,6 @@ private fun HTML.standardHeader() {
     title { +"Burndown" }
     link(rel = "stylesheet", href = "/styles.css", type = "text/css")
     link(rel = "stylesheet", href = "https://use.typekit.net/jie0wdu.css")
+    meta("viewport", "width=device-width, initial-scale=1.0")
   }
 }
